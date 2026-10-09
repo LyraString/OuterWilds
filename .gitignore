@@ -1,0 +1,16 @@
+bin/
+dist/*.debug.xml
+dist/gen/
+dist/mir/
+dist/internal-mir/
+*.der
+*.pem
+developer_key*
+.env
+.env.*
+!.env.example
+.vscode/settings.json
+.idea/
+*.log
+Thumbs.db
+.DS_Store
