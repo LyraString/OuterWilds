@@ -10,12 +10,15 @@
 
 ## 功能
 
-- 大号像素时间，遵循手表 12/24 小时设置。
+- Garmin 原生粗体数字时间，搭配简洁的小字，遵循手表 12/24 小时设置。
 - 星期、日期、电量、当天步数和心率。
+- 海拔、当地气温与英文天气状态，如 `CLEAR`、`CLOUDY`、`RAIN`；单位跟随手表设置。
 - 六帧火焰、缓慢飘动的火星、低功耗静态显示。
 - 面向 47 mm fēnix 7 Pro：260 × 260、64 色 MIP。
 
 已通过 Garmin 模拟器验证；实机色彩、抬腕表现和续航尚待确认。其他型号尚未适配。
+
+气温和天气读取 Garmin 已缓存的天气信息，需要通过手机 Garmin Connect 更新。缺失值显示 `--` / `N/A`；已知观测时间超过两小时则显示 `STALE`。海拔读取手表已有测量值。
 
 ## 安装
 
@@ -31,17 +34,17 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\build.ps1
 ```
 
-调试编译使用 `-DebugBuild`。SDK 与密钥可通过 `-SdkPath` 和 `-DeveloperKey` 指定，详细操作见[中文说明](README-中文.md)。
+调试编译使用 `-DebugBuild`，单元测试编译使用 `-Test`。SDK 与密钥可通过 `-SdkPath` 和 `-DeveloperKey` 指定，详细操作见[中文说明](README-中文.md)。
 
 ## 版本管理
 
-`main` 保存开发中的版本，`v0.1.0` 是当前已确认的像素营地版本。`archive/v1/` 保留重做前的原型。
+`main` 保存开发中的版本，`v0.2.0` 增加环境信息与户外风格字体，`v0.1.0` 保留最初的像素营地版本。改动记录见 [CHANGELOG.md](CHANGELOG.md)。`archive/v1/` 保留重做前的原型。
 
 每次改动验证后，在项目目录执行：
 
 ```powershell
 git status
-git add source resources manifest.xml monkey.jungle tools README.md README-中文.md
+git add source resources manifest.xml monkey.jungle tools README.md README-中文.md CHANGELOG.md
 git commit -m "Describe the watch face change"
 git push
 ```
@@ -49,8 +52,8 @@ git push
 若更新了预览或安装包，一并添加对应文件。需要保存一个可随时回看的版本时，创建新的标签：
 
 ```powershell
-git tag -a v0.1.1 -m "Describe this version"
-git push origin v0.1.1
+git tag -a v0.2.1 -m "Describe this version"
+git push origin v0.2.1
 ```
 
 `bin/`、编译中间文件、调试信息和开发者密钥已由 `.gitignore` 排除；正式 `.prg` 安装包保存在 `dist/`。

@@ -1,10 +1,12 @@
 param(
     [string]$DeveloperKey,
     [string]$SdkPath,
-    [switch]$DebugBuild
+    [switch]$DebugBuild,
+    [switch]$Test
 )
 
 $ErrorActionPreference = 'Stop'
+if ($DebugBuild -and $Test) { throw 'Choose either -DebugBuild or -Test.' }
 $taskRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 
 if (-not $SdkPath) {
@@ -31,11 +33,12 @@ if (-not $DeveloperKey -or -not (Test-Path -LiteralPath $DeveloperKey)) {
 
 $taskCompiler = Join-Path $SdkPath 'bin\monkeyc.bat'
 if (-not (Test-Path -LiteralPath $taskCompiler)) { throw 'The Connect IQ compiler was not found at -SdkPath.' }
-$taskOutputDir = Join-Path $taskRoot $(if ($DebugBuild) { 'bin' } else { 'dist' })
+$taskOutputDir = Join-Path $taskRoot $(if ($DebugBuild -or $Test) { 'bin' } else { 'dist' })
 New-Item -ItemType Directory -Path $taskOutputDir -Force | Out-Null
-$taskOutput = Join-Path $taskOutputDir $(if ($DebugBuild) { 'CampfireUnderStars.prg' } else { 'CampfireUnderStars-fenix7pro.prg' })
+$taskOutputName = if ($Test) { 'CampfireUnderStars-tests.prg' } elseif ($DebugBuild) { 'CampfireUnderStars.prg' } else { 'CampfireUnderStars-fenix7pro.prg' }
+$taskOutput = Join-Path $taskOutputDir $taskOutputName
 $taskCompilerArgs = @('-f', (Join-Path $taskRoot 'monkey.jungle'), '-d', 'fenix7pro', '-y', $DeveloperKey, '-o', $taskOutput, '-w')
-if (-not $DebugBuild) { $taskCompilerArgs += '-r' }
+if ($Test) { $taskCompilerArgs += '-t' } elseif (-not $DebugBuild) { $taskCompilerArgs += '-r' }
 
 Push-Location -LiteralPath $taskRoot
 try {
