@@ -5,14 +5,37 @@ using Toybox.Lang;
 // Coordinates are deliberately composed for the 260-pixel circular display.
 class CampfireScene {
     var mStars as Lang.Array<Lang.Array<Lang.Number>> = [
-        [77,16], [99,9], [151,14], [174,21], [62,31], [187,34],
-        [43,49], [72,43], [166,42], [209,49], [229,69], [31,77],
-        [22,105], [43,102], [228,100], [245,123], [17,134],
-        [35,139], [62,135], [90,140], [118,133], [145,143],
-        [175,131], [236,153], [102,157], [167,157], [156,175],
-        [78,172], [181,185], [21,167], [243,181]
+        [78,16], [93,11], [108,7], [149,8], [164,13], [178,20],
+        [66,23], [98,21], [116,19], [146,21], [166,25], [191,31],
+        [52,35], [61,42], [74,46], [97,45], [155,46], [177,45],
+        [200,39], [211,48], [219,57], [39,53], [31,66], [37,76],
+        [22,83], [29,93], [17,99], [32,104], [42,110], [52,104],
+        [62,112], [74,108], [84,120], [69,127], [49,130], [31,124],
+        [12,122], [22,137], [16,151], [29,156], [52,143], [60,151],
+        [72,143], [82,151], [91,160], [105,150], [115,160], [149,151],
+        [161,162], [173,150], [181,158], [162,174], [96,174], [82,167],
+        [226,73], [238,79], [231,95], [244,98], [238,110], [249,118],
+        [229,124], [244,136], [252,146], [237,152], [247,167], [229,171],
+        [216,111], [200,117], [181,111], [174,123], [185,129], [157,120],
+        [103,126], [87,133], [117,152], [150,164], [172,136], [12,163],
+        // A few distant points show through counters and spaces in the time.
+        [66,99], [83,118], [104,90], [112,117], [158,87], [172,119], [192,101], [203,119]
     ];
-    var mBrightStars as Lang.Array<Lang.Array<Lang.Number>> = [[85,24], [194,63], [38,120], [158,135], [99,178]];
+    var mBrightStars as Lang.Array<Lang.Array<Lang.Number>> = [
+        [85,25], [159,18], [188,42], [44,65], [24,114],
+        [48,121], [77,133], [101,158], [155,157], [183,119],
+        [226,109], [239,87], [240,130], [230,148], [18,143],
+        [64,159], [180,144], [202,105], [39,91], [216,65]
+    ];
+    // Six MIP-safe cool-white shades rise and fall over twelve seconds.
+    // Different phases keep the sky moving gently rather than flashing in unison.
+    var mStarColors as Lang.Array<Lang.Number> = [
+        0x555555, 0x5555AA, 0x55AAAA, 0xAAAAAA, 0xAAAAFF, 0xFFFFFF
+    ];
+    var mStarHalos as Lang.Array<Lang.Number> = [
+        0x000055, 0x000055, 0x555555, 0x5555AA, 0x55AAAA, 0xAAAAAA
+    ];
+    var mPulseLevels as Lang.Array<Lang.Number> = [0,1,2,3,4,5,5,4,3,2,1,0];
     var mFireColors as Lang.Array<Lang.Number> = [0x000000, 0xAA0000, 0xFF5500, 0xFFAA00, 0xFFFFAA];
     // Six hand-drawn flame poses, each 13 x 17 logical pixels.
     // 0=transparent, 1=red edge, 2=orange, 3=gold, 4=warm core.
@@ -46,36 +69,44 @@ class CampfireScene {
     function initialize() {}
 
     function drawSky(dc, second, sleeping) {
-        dc.setColor(0x555555, Graphics.COLOR_TRANSPARENT);
         for (var i = 0; i < mStars.size(); i += 1) {
+            var level = sleeping ? 3 : mPulseLevels[(second + i * 2) % 12];
+            dc.setColor(mStarColors[level], Graphics.COLOR_TRANSPARENT);
             dc.drawPoint(mStars[i][0], mStars[i][1]);
         }
         for (var j = 0; j < mBrightStars.size(); j += 1) {
             var star = mBrightStars[j];
-            dc.setColor(!sleeping && (second + j) % 6 == 0 ? 0xFFFFFF : 0xAAAAAA,
-                        Graphics.COLOR_TRANSPARENT);
+            var brightness = sleeping ? 3 : mPulseLevels[(second + j * 2 + 1) % 12];
+            if (j % 3 == 0) {
+                dc.setColor(mStarHalos[brightness], Graphics.COLOR_TRANSPARENT);
+                dc.drawLine(star[0] - 2, star[1], star[0] + 3, star[1]);
+                dc.drawLine(star[0], star[1] - 2, star[0], star[1] + 3);
+            }
+            dc.setColor(mStarColors[brightness], Graphics.COLOR_TRANSPARENT);
             dc.fillRectangle(star[0], star[1], 2, 2);
         }
         // A quiet, four-point navigation star above the clock.
-        dc.setColor(0xAAAA55, Graphics.COLOR_TRANSPARENT);
+        var guideLevel = sleeping ? 4 : mPulseLevels[second % 12];
+        dc.setColor(mStarHalos[guideLevel], Graphics.COLOR_TRANSPARENT);
         dc.drawLine(130, 10, 130, 19);
         dc.drawLine(126, 14, 134, 14);
-        dc.setColor(0xFFFFFF, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(mStarColors[guideLevel], Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(129, 13, 3, 3);
 
-        // Small ringed world. Two passes let the ring cross the lit hemisphere.
-        dc.setColor(0x555555, Graphics.COLOR_TRANSPARENT);
-        dc.drawEllipse(207, 143, 17, 5);
-        dc.setColor(0x5555AA, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(207, 140, 9);
+        // A complete blue world, with simple land shapes and a shaded hemisphere.
+        dc.setColor(0x000055, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(208, 154, 10);
+        dc.setColor(0x0055AA, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(208, 154, 9);
+        dc.setColor(0x55AAAA, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(205, 151, 5);
+        dc.setColor(0x000055, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(211, 157, 5);
+        dc.setColor(0x005555, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([[203,148],[207,148],[209,150],[207,152],[204,151]]);
+        dc.fillPolygon([[206,155],[209,154],[211,156],[210,158],[207,157]]);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(204, 138, 6);
-        dc.setColor(0x5555AA, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(210, 137, 7);
-        dc.setColor(0xAAAA55, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(191, 145, 200, 146);
-        dc.drawLine(200, 146, 211, 145);
-        dc.drawLine(211, 145, 223, 142);
+        dc.drawPoint(202, 149);
     }
 
     function drawLandscape(dc) {
@@ -109,23 +140,23 @@ class CampfireScene {
 
         // A patch of reflected firelight; no expensive gradients or alpha.
         dc.setColor(0x555500, Graphics.COLOR_TRANSPARENT);
-        dc.fillEllipse(130, 214, 39, 7);
+        dc.fillEllipse(130, 208, 39, 7);
         dc.setColor(0xAA5500, Graphics.COLOR_TRANSPARENT);
-        dc.fillEllipse(130, 212, 22, 4);
+        dc.fillEllipse(130, 206, 22, 4);
         dc.setColor(0x000000, Graphics.COLOR_TRANSPARENT);
         for (var x = 94; x < 170; x += 8) {
-            dc.fillRectangle(x, 217, 4, 2);
+            dc.fillRectangle(x, 211, 4, 2);
         }
-        dc.fillRectangle(99, 210, 4, 2);
-        dc.fillRectangle(153, 215, 5, 2);
+        dc.fillRectangle(99, 204, 4, 2);
+        dc.fillRectangle(153, 209, 5, 2);
         dc.setColor(0x555555, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(85, 218, 4, 2);
-        dc.fillRectangle(171, 219, 5, 2);
+        dc.fillRectangle(85, 212, 4, 2);
+        dc.fillRectangle(171, 213, 5, 2);
         // A little roasting stick is the only human trace in the clearing.
         dc.setColor(0xAA5500, Graphics.COLOR_TRANSPARENT);
-        dc.drawLine(92, 211, 116, 192);
+        dc.drawLine(92, 205, 116, 186);
         dc.setColor(0xFFFFAA, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(114, 190, 5, 4);
+        dc.fillRectangle(114, 184, 5, 4);
     }
 
     function pine(dc, x, y, scale, color) {
@@ -152,7 +183,7 @@ class CampfireScene {
                     var ink = column < 13 && pose[row].substring(column, column + 1).toNumber() == color;
                     if (ink && start < 0) { start = column; }
                     if (!ink && start >= 0) {
-                        dc.fillRectangle(117 + start * 2, 174 + row * 2,
+                        dc.fillRectangle(117 + start * 2, 168 + row * 2,
                                          (column - start) * 2, 2);
                         start = -1;
                     }
@@ -160,23 +191,23 @@ class CampfireScene {
             }
         }
         dc.setColor(0x555555, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(108, 211, 6, 4);
-        dc.fillRectangle(115, 215, 5, 3);
-        dc.fillRectangle(139, 214, 5, 3);
-        dc.fillRectangle(145, 210, 5, 4);
+        dc.fillRectangle(108, 205, 6, 4);
+        dc.fillRectangle(115, 209, 5, 3);
+        dc.fillRectangle(139, 208, 5, 3);
+        dc.fillRectangle(145, 204, 5, 4);
         dc.setColor(0xAA5500, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([[115,207],[143,213],[142,217],[114,211]]);
-        dc.fillPolygon([[141,206],[144,210],[116,217],[114,213]]);
+        dc.fillPolygon([[115,201],[143,207],[142,211],[114,205]]);
+        dc.fillPolygon([[141,200],[144,204],[116,211],[114,207]]);
         dc.setColor(0xFFAA00, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(121, 211, 4, 2);
-        dc.fillRectangle(133, 211, 4, 2);
+        dc.fillRectangle(121, 205, 4, 2);
+        dc.fillRectangle(133, 205, 4, 2);
 
         if (!sleeping) {
             // Embers drift up and sideways through a full six-second cycle.
             dc.setColor(frame < 4 ? 0xFFAA00 : 0xAA5500, Graphics.COLOR_TRANSPARENT);
-            dc.fillRectangle(133 + frame, 169 - frame * 3, 2, 2);
+            dc.fillRectangle(133 + frame, 170 - frame * 2, 2, 2);
             dc.setColor(frame < 3 ? 0xAA5500 : 0xFF5500, Graphics.COLOR_TRANSPARENT);
-            dc.fillRectangle(121 - frame, 174 - ((frame + 3) % 6) * 3, 1, 2);
+            dc.fillRectangle(121 - frame, 172 - ((frame + 3) % 6) * 2, 1, 2);
         }
     }
 }

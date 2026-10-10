@@ -1,7 +1,5 @@
-using Toybox.Lang;
 using Toybox.Math;
 using Toybox.System;
-using Toybox.Time;
 using Toybox.Weather;
 
 // Garmin's weather values are Celsius; elevation samples are meters.

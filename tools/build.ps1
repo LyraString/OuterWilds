@@ -33,9 +33,9 @@ if (-not $DeveloperKey -or -not (Test-Path -LiteralPath $DeveloperKey)) {
 
 $taskCompiler = Join-Path $SdkPath 'bin\monkeyc.bat'
 if (-not (Test-Path -LiteralPath $taskCompiler)) { throw 'The Connect IQ compiler was not found at -SdkPath.' }
-$taskOutputDir = Join-Path $taskRoot $(if ($DebugBuild -or $Test) { 'bin' } else { 'dist' })
+$taskOutputDir = Join-Path $taskRoot 'bin'
 New-Item -ItemType Directory -Path $taskOutputDir -Force | Out-Null
-$taskOutputName = if ($Test) { 'CampfireUnderStars-tests.prg' } elseif ($DebugBuild) { 'CampfireUnderStars.prg' } else { 'CampfireUnderStars-fenix7pro.prg' }
+$taskOutputName = if ($Test) { 'OuterWilds-tests.prg' } elseif ($DebugBuild) { 'OuterWilds.prg' } else { 'OuterWilds-fenix7pro.prg' }
 $taskOutput = Join-Path $taskOutputDir $taskOutputName
 $taskCompilerArgs = @('-f', (Join-Path $taskRoot 'monkey.jungle'), '-d', 'fenix7pro', '-y', $DeveloperKey, '-o', $taskOutput, '-w')
 if ($Test) { $taskCompilerArgs += '-t' } elseif (-not $DebugBuild) { $taskCompilerArgs += '-r' }
@@ -44,6 +44,13 @@ Push-Location -LiteralPath $taskRoot
 try {
     & $taskCompiler @taskCompilerArgs
     if ($LASTEXITCODE -ne 0) { throw "Connect IQ compilation failed (exit $LASTEXITCODE)." }
+    if (-not $DebugBuild -and -not $Test) {
+        $taskDistDir = Join-Path $taskRoot 'dist'
+        New-Item -ItemType Directory -Path $taskDistDir -Force | Out-Null
+        $taskDistOutput = Join-Path $taskDistDir $taskOutputName
+        Copy-Item -LiteralPath $taskOutput -Destination $taskDistOutput -Force
+        $taskOutput = $taskDistOutput
+    }
     Write-Output "Built: $taskOutput"
 } finally {
     Pop-Location

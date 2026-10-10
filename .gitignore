@@ -1,8 +1,8 @@
 bin/
-dist/*.debug.xml
-dist/gen/
-dist/mir/
-dist/internal-mir/
+dist/*
+!dist/OuterWilds-fenix7pro.prg
+__pycache__/
+*.py[cod]
 *.der
 *.pem
 developer_key*

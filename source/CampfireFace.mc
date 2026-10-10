@@ -13,6 +13,8 @@ using Toybox.Weather;
 class CampfireFace extends WatchUi.WatchFace {
     var mSleeping = true;
     var mScene as CampfireScene;
+    var mTimeFont;
+    var mActivityFont;
     var mDate = "";
     var mBattery = 0;
     var mSteps = "--";
@@ -26,6 +28,8 @@ class CampfireFace extends WatchUi.WatchFace {
     function initialize() {
         WatchFace.initialize();
         mScene = new CampfireScene();
+        mTimeFont = WatchUi.loadResource(Rez.Fonts.TimeFont);
+        mActivityFont = WatchUi.loadResource(Rez.Fonts.ActivityFont);
     }
 
     function onEnterSleep() {
@@ -59,9 +63,9 @@ class CampfireFace extends WatchUi.WatchFace {
         mScene.drawLandscape(dc);
         mScene.drawCampfire(dc, mSleeping ? 2 : clock.sec % 6, mSleeping);
         drawClock(dc, clock);
-        drawDateAndBattery(dc);
+        drawDate(dc);
         drawEnvironment(dc);
-        drawActivity(dc);
+        drawFooter(dc);
     }
 
     function refreshData(now) {
@@ -126,55 +130,99 @@ class CampfireFace extends WatchUi.WatchFace {
             if (hour == 0) { hour = 12; }
         }
         var text = hour.format("%02d") + ":" + clock.min.format("%02d");
-        // Garmin's bold outdoor numerals keep the time clear above the clearing.
+        drawStarlitTime(dc, text, is24Hour ? null : (clock.hour < 12 ? "AM" : "PM"));
+    }
+
+    function drawStarlitTime(dc, text, suffix) {
+        var align = Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER;
+        // Center the numerals in either time format; AM/PM sits separately to the right.
+        var timeX = 130;
+        // Slim white strokes float against the sky, with a quiet neutral halo.
+        dc.setColor(0x555555, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(timeX - 1, 110, mTimeFont, text, align);
+        dc.drawText(timeX + 1, 110, mTimeFont, text, align);
+        dc.drawText(timeX, 109, mTimeFont, text, align);
+        dc.drawText(timeX, 111, mTimeFont, text, align);
         dc.setColor(0xFFFFFF, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(130, 76, Graphics.FONT_NUMBER_HOT, text,
-                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        if (!is24Hour) {
+        dc.drawText(timeX, 110, mTimeFont, text, align);
+        if (suffix != null) {
+            var suffixX = timeX + dc.getTextWidthInPixels(text, mTimeFont) / 2 + 6;
             dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(223, 87, Graphics.FONT_XTINY, clock.hour < 12 ? "AM" : "PM",
-                        Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(suffixX, 120, Graphics.FONT_XTINY, suffix, Graphics.TEXT_JUSTIFY_LEFT);
         }
     }
 
-    function drawDateAndBattery(dc) {
+    function drawDate(dc) {
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(100, 109, Graphics.FONT_XTINY, mDate, Graphics.TEXT_JUSTIFY_CENTER);
-        var color = mBattery <= 20 ? 0xFF5500 : 0xAAAA55;
-        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(157, 113, 12, 9);
-        dc.fillRectangle(170, 116, 2, 3);
-        var fill = (mBattery * 9 / 100).toNumber();
-        if (fill > 0) { dc.fillRectangle(159, 115, fill, 6); }
-        dc.drawText(192, 109, Graphics.FONT_XTINY, mBattery.format("%d") + "%",
-                    Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(130, 139, Graphics.FONT_XTINY, mDate, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function drawEnvironment(dc) {
         dc.setColor(0xAAAA55, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(130, 27, Graphics.FONT_XTINY, mTemperature + "  " + mWeather,
+        dc.drawText(130, 35, Graphics.FONT_XTINY, mTemperature + "  " + mWeather,
                     Graphics.TEXT_JUSTIFY_CENTER);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(128, 132, Graphics.FONT_XTINY, "ALT " + mElevation,
+        dc.drawText(130, 56, Graphics.FONT_XTINY, "ALT " + mElevation,
                     Graphics.TEXT_JUSTIFY_CENTER);
     }
 
-    function drawActivity(dc) {
-        // Keep both groups inside the circular screen at y=226..239.
-        dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(102, 224, Graphics.FONT_XTINY, mSteps, Graphics.TEXT_JUSTIFY_CENTER);
+    function drawFooter(dc) {
+        // Both activity values and icons share an ink baseline; battery is separate.
+        var activityY = 221;
+        var stepsText = stepDisplayText();
+        var stepsWidth = 20 + dc.getTextWidthInPixels(stepsText, mActivityFont);
+        var heartWidth = 20 + dc.getTextWidthInPixels(mHeartRate, mActivityFont);
+        var stepsX = ((260 - stepsWidth - 18 - heartWidth) / 2).toNumber();
+        var heartX = stepsX + stepsWidth + 18;
         dc.setColor(0xAAAA55, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(62, 227, 3, 5);
-        dc.fillRectangle(61, 233, 5, 3);
-        dc.fillRectangle(68, 229, 3, 5);
-        dc.fillRectangle(67, 235, 5, 3);
-        dc.setColor(0xFF5500, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(151, 228, 4, 4);
-        dc.fillRectangle(157, 228, 4, 4);
-        dc.fillRectangle(150, 231, 12, 3);
-        dc.fillRectangle(152, 234, 8, 2);
-        dc.fillRectangle(154, 236, 4, 2);
+        drawFootstepsIcon(dc, stepsX, activityY + 3);
         dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(183, 224, Graphics.FONT_XTINY, mHeartRate, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(stepsX + 20, activityY, mActivityFont, stepsText, Graphics.TEXT_JUSTIFY_LEFT);
+        dc.setColor(0xFF5500, Graphics.COLOR_TRANSPARENT);
+        drawHeartIcon(dc, heartX, activityY + 4);
+        dc.setColor(0xAAAAAA, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(heartX + 20, activityY, mActivityFont, mHeartRate, Graphics.TEXT_JUSTIFY_LEFT);
+
+        var batteryColor = mBattery <= 20 ? 0xFF5500 : 0xAAAAAA;
+        var batteryText = mBattery.format("%d") + "%";
+        var batteryX = ((260 - 12 - dc.getTextWidthInPixels(batteryText, Graphics.FONT_XTINY)) / 2).toNumber();
+        dc.setColor(batteryColor, Graphics.COLOR_TRANSPARENT);
+        drawBatteryIcon(dc, batteryX, 242);
+        dc.drawText(batteryX + 12, 240, Graphics.FONT_XTINY, batteryText,
+                    Graphics.TEXT_JUSTIFY_LEFT);
+    }
+
+    function stepDisplayText() {
+        if (mSteps.length() <= 5) { return mSteps; }
+        var count = mSteps.toNumber();
+        // Unusually large counts stay compact without widening the footer.
+        if (count < 1000000) { return (count / 1000).toNumber().format("%d") + "k"; }
+        return (count / 1000000).toNumber().format("%d") + "M";
+    }
+
+    function drawFootstepsIcon(dc, x, y) {
+        dc.fillRectangle(x + 1, y, 4, 6);
+        dc.fillRectangle(x, y + 7, 6, 3);
+        dc.fillRectangle(x + 8, y + 2, 4, 6);
+        dc.fillRectangle(x + 7, y + 10, 6, 3);
+    }
+
+    function drawHeartIcon(dc, x, y) {
+        dc.fillRectangle(x + 1, y, 5, 4);
+        dc.fillRectangle(x + 8, y, 5, 4);
+        dc.fillRectangle(x, y + 3, 14, 4);
+        dc.fillRectangle(x + 2, y + 7, 10, 2);
+        dc.fillRectangle(x + 4, y + 9, 6, 2);
+        dc.fillRectangle(x + 6, y + 11, 2, 1);
+    }
+
+    function drawBatteryIcon(dc, x, y) {
+        // One continuous column rises with the charge inside the upright outline.
+        dc.fillRectangle(x + 2, y, 4, 2);
+        dc.drawRectangle(x, y + 2, 8, 12);
+        var height = (mBattery * 8 / 100).toNumber();
+        if (height > 8) { height = 8; }
+        if (height < 1 && mBattery > 0) { height = 1; }
+        if (height > 0) { dc.fillRectangle(x + 2, y + 12 - height, 4, height); }
     }
 }
